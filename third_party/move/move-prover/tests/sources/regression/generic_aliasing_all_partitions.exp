@@ -1,0 +1,154 @@
+Move prover returns: exiting with verification errors
+error: post-condition does not hold
+   ┌─ tests/sources/regression/generic_aliasing_all_partitions.move:29:9
+   │
+29 │         ensures result == true;
+   │         ^^^^^^^^^^^^^^^^^^^^^^^
+   │
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:21: three_way
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:28: three_way (spec)
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:21: three_way
+   =         a = <redacted>
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:22: three_way
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:23: three_way
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:24: three_way
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:25: three_way
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:21: three_way
+   =         result = <redacted>
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:26: three_way
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:29: three_way (spec)
+
+error: post-condition does not hold
+   ┌─ tests/sources/regression/generic_aliasing_all_partitions.move:42:9
+   │
+42 │         ensures result == true;
+   │         ^^^^^^^^^^^^^^^^^^^^^^^
+   │
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:33: four_way
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:41: four_way (spec)
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:33: four_way
+   =         a = <redacted>
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:34: four_way
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:35: four_way
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:36: four_way
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:37: four_way
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:38: four_way
+   =         <redacted> = <redacted>
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:38: four_way
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:33: four_way
+   =         result = <redacted>
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:42: four_way (spec)
+
+error: post-condition does not hold
+   ┌─ tests/sources/regression/generic_aliasing_all_partitions.move:53:9
+   │
+53 │         ensures result == true;
+   │         ^^^^^^^^^^^^^^^^^^^^^^^
+   │
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:46: pair
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:52: pair (spec)
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:46: pair
+   =         a = <redacted>
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:47: pair
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:48: pair
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:49: pair
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:46: pair
+   =         result = <redacted>
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:53: pair (spec)
+
+error: post-condition does not hold
+   ┌─ tests/sources/regression/generic_aliasing_all_partitions.move:81:9
+   │
+81 │         ensures result == true;
+   │         ^^^^^^^^^^^^^^^^^^^^^^^
+   │
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:73: through_concrete
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:80: through_concrete (spec)
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:73: through_concrete
+   =         a = <redacted>
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:74: through_concrete
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:75: through_concrete
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:76: through_concrete
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:77: through_concrete
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:73: through_concrete
+   =         result = <redacted>
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:78: through_concrete
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:81: through_concrete (spec)
+
+error: post-condition does not hold
+   ┌─ tests/sources/regression/generic_aliasing_all_partitions.move:94:9
+   │
+94 │         ensures result == true;
+   │         ^^^^^^^^^^^^^^^^^^^^^^^
+   │
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:85: across_structs
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:93: across_structs (spec)
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:85: across_structs
+   =         a = <redacted>
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:86: across_structs
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:87: across_structs
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:88: across_structs
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:89: across_structs
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:90: across_structs
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:85: across_structs
+   =         result = <redacted>
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:91: across_structs
+   =     at tests/sources/regression/generic_aliasing_all_partitions.move:94: across_structs (spec)
+
+error: post-condition does not hold
+    ┌─ tests/sources/regression/generic_aliasing_all_partitions.move:106:9
+    │
+106 │         ensures result == true;
+    │         ^^^^^^^^^^^^^^^^^^^^^^^
+    │
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:98: through_nesting
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:105: through_nesting (spec)
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:98: through_nesting
+    =         a = <redacted>
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:99: through_nesting
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:100: through_nesting
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:101: through_nesting
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:102: through_nesting
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:98: through_nesting
+    =         result = <redacted>
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:103: through_nesting
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:106: through_nesting (spec)
+
+error: post-condition does not hold
+    ┌─ tests/sources/regression/generic_aliasing_all_partitions.move:141:9
+    │
+141 │         ensures result == true;
+    │         ^^^^^^^^^^^^^^^^^^^^^^^
+    │
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:131: two_pairs
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:139: two_pairs (spec)
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:131: two_pairs
+    =         a = <redacted>
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:132: two_pairs
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:133: two_pairs
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:134: two_pairs
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:135: two_pairs
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:136: two_pairs
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:131: two_pairs
+    =         result = <redacted>
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:137: two_pairs
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:141: two_pairs (spec)
+
+error: post-condition does not hold
+    ┌─ tests/sources/regression/generic_aliasing_all_partitions.move:154:9
+    │
+154 │         ensures result == true;
+    │         ^^^^^^^^^^^^^^^^^^^^^^^
+    │
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:146: three_shared
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:153: three_shared (spec)
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:146: three_shared
+    =         a = <redacted>
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:147: three_shared
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:148: three_shared
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:149: three_shared
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:150: three_shared
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:146: three_shared
+    =         result = <redacted>
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:151: three_shared
+    =     at tests/sources/regression/generic_aliasing_all_partitions.move:154: three_shared (spec)

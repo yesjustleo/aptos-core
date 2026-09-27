@@ -38,8 +38,10 @@ use move_model::{
         INTRINSIC_TYPE_MAP_ASSOC_FUNCTIONS,
     },
     symbol::Symbol,
-    ty::{NoUnificationContext, PrimitiveType, ReferenceKind, Type, TypeDisplayContext, Variance},
-    ty_invariant_analysis::{TypeInstantiationDerivation, TypeUnificationAdapter},
+    ty::{
+        NoUnificationContext, PrimitiveType, ReferenceKind, Substitution, Type, TypeDisplayContext,
+        Variance, WideningOrder,
+    },
     well_known::{
         OBJECT_SPEC_EXISTS_AT, TYPE_INFO_MOVE, TYPE_INFO_SPEC, TYPE_NAME_GET_MOVE,
         TYPE_NAME_GET_SPEC, TYPE_NAME_MOVE, TYPE_NAME_SPEC, TYPE_SPEC_IS_STRUCT,
@@ -56,6 +58,68 @@ use std::{
     fmt,
     rc::Rc,
 };
+
+/// Upper bound on the accessed memories that may alias in one verified function. Every
+/// partition of them is examined, so the work grows with their Bell number: 9 memories give
+/// 21147 partitions. Exceeding it is reported as an error rather than leaving aliasing cases
+/// unverified.
+const MAX_ALIASING_MEMORIES: usize = 9;
+
+/// Upper bound on the type-aliasing instantiations verified for one function. Each one is a
+/// separate verification of the function. Exceeding it is reported as an error rather than
+/// silently leaving cases unverified.
+const MAX_ALIASING_INSTANCES: usize = 256;
+
+/// Canonical form of a type-aliasing instantiation: the type parameters it maps to are
+/// renamed in order of first occurrence. Two instantiations that describe the same aliasing
+/// case but pick different representatives -- `T = U` written as `[U, U]` or as `[T, T]` --
+/// then compare equal, so each case is verified once and counted once against
+/// `MAX_ALIASING_INSTANCES`. The parameters are symbolic, so the renaming is only
+/// alpha-equivalence and does not change what is verified.
+fn canonical_aliasing_inst(inst: &[Type], arity: usize) -> Vec<Type> {
+    let mut order: Vec<u16> = vec![];
+    for ty in inst {
+        ty.visit(&mut |t| {
+            if let Type::TypeParameter(idx) = t {
+                if !order.contains(idx) {
+                    order.push(*idx);
+                }
+            }
+        });
+    }
+    let renaming: Vec<Type> = (0..arity)
+        .map(|old| match order.iter().position(|p| *p as usize == old) {
+            Some(new) => Type::TypeParameter(new as u16),
+            None => Type::TypeParameter(old as u16),
+        })
+        .collect();
+    inst.iter().map(|t| t.instantiate(&renaming)).collect()
+}
+
+/// Maps the unification variables standing for a function's type parameters back to those
+/// parameters: `Var(i)` becomes `TypeParameter(i)`.
+fn vars_to_type_params(ty: &Type) -> Type {
+    match ty {
+        Type::Var(i) => Type::TypeParameter(*i as u16),
+        Type::Vector(et) => Type::Vector(Box::new(vars_to_type_params(et))),
+        Type::Struct(mid, sid, inst) => {
+            Type::Struct(*mid, *sid, inst.iter().map(vars_to_type_params).collect())
+        },
+        Type::Tuple(ts) => Type::Tuple(ts.iter().map(vars_to_type_params).collect()),
+        Type::Reference(kind, bt) => Type::Reference(*kind, Box::new(vars_to_type_params(bt))),
+        Type::Fun(params, results, abilities) => Type::Fun(
+            Box::new(vars_to_type_params(params)),
+            Box::new(vars_to_type_params(results)),
+            *abilities,
+        ),
+        Type::TypeDomain(bt) => Type::TypeDomain(Box::new(vars_to_type_params(bt))),
+        Type::Primitive(_)
+        | Type::TypeParameter(_)
+        | Type::ResourceDomain(..)
+        | Type::StateDomain
+        | Type::Error => ty.clone(),
+    }
+}
 
 /// The environment extension computed by this analysis.
 #[derive(Clone, Default, Debug)]
@@ -1489,35 +1553,126 @@ impl Analyzer<'_> {
             let fun_type_params_arity = target.get_type_parameter_count();
             let usage_state = UsageProcessor::analyze(self.targets, target.func_env, target.data);
 
-            // collect instantiations
-            let mut all_insts = BTreeSet::new();
-            for lhs_m in usage_state.accessed.all.iter() {
-                let lhs_ty = lhs_m.to_type();
-                for rhs_m in usage_state.accessed.all.iter() {
-                    let rhs_ty = rhs_m.to_type();
-
-                    // make sure these two types unify before trying to instantiate them
-                    let adapter = TypeUnificationAdapter::new_pair(&lhs_ty, &rhs_ty, true, true);
-                    if adapter
-                        .unify(&mut NoUnificationContext, Variance::SpecVariance, false)
-                        .is_none()
-                    {
-                        continue;
+            // Collect instantiations. Each one is a substitution over the function's own type
+            // parameters under which some accessed memories are the same type, so that the
+            // function is also verified in that aliasing case. A function accessing `R<T>`,
+            // `R<U>` and `R<V>` must be verified for every way they can coincide -- `T = U`,
+            // `T = V`, `U = V` and `T = U = V` -- or a postcondition false only in the
+            // three-way case is proved.
+            //
+            // Every partition of the memories that can alias is examined, and a partition is
+            // an aliasing case exactly when one substitution makes each of its blocks a single
+            // type. That substitution is computed by unifying all blocks in one namespace of
+            // the function's own type parameters (with an occurs check), so `R<T>` against
+            // `R<vector<T>>` correctly never aliases. A partition whose unifier also forces
+            // memories in different blocks equal describes a coarser case, and canonicalizing
+            // collapses the two.
+            let accessed: Vec<Type> = usage_state
+                .accessed
+                .all
+                .iter()
+                .map(|m| m.to_type())
+                .collect();
+            let as_vars: Vec<Type> = (0..fun_type_params_arity)
+                .map(|i| Type::Var(i as u32))
+                .collect();
+            let adapted: Vec<Type> = accessed.iter().map(|m| m.instantiate(&as_vars)).collect();
+            // Unification is exact: two memories alias only if their types are equal as Move
+            // types. Spec variance would unify distinct integer types (`R<u8>` with `R<u64>`),
+            // yielding cases that alias nothing and inflating the candidates past the caps.
+            let unifier_of = |blocks: &[Vec<usize>]| -> Option<Vec<Type>> {
+                let mut subst = Substitution::new();
+                for block in blocks {
+                    for pair in block.windows(2) {
+                        subst
+                            .unify(
+                                &mut NoUnificationContext,
+                                Variance::NoVariance,
+                                WideningOrder::LeftToRight,
+                                &adapted[pair[0]],
+                                &adapted[pair[1]],
+                            )
+                            .ok()?;
                     }
-
-                    // find all instantiation combinations given by this unification
-                    let fun_insts = TypeInstantiationDerivation::progressive_instantiation(
-                        std::iter::once(&lhs_ty),
-                        std::iter::once(&rhs_ty),
-                        true,
-                        false,
-                        true,
-                        false,
-                        fun_type_params_arity,
-                        true,
-                        false,
-                    );
-                    all_insts.extend(fun_insts);
+                }
+                Some(
+                    (0..fun_type_params_arity)
+                        .map(|i| vars_to_type_params(&subst.specialize(&Type::Var(i as u32))))
+                        .collect(),
+                )
+            };
+            // Only memories that can alias some other memory take part; the rest are
+            // singleton blocks in every partition.
+            let candidates: Vec<usize> = (0..adapted.len())
+                .filter(|&i| {
+                    (0..adapted.len()).any(|j| j != i && unifier_of(&[vec![i, j]]).is_some())
+                })
+                .collect();
+            let mut all_insts: BTreeSet<Vec<Type>> = BTreeSet::new();
+            if candidates.len() > MAX_ALIASING_MEMORIES {
+                self.env.error(
+                    &target.get_loc(),
+                    &format!(
+                        "too many type-aliasing cases to verify for `{}`: {} accessed global \
+                         resources can coincide under some instantiation of its type \
+                         parameters (at most {} are supported)",
+                        target.func_env.get_full_name_str(),
+                        candidates.len(),
+                        MAX_ALIASING_MEMORIES
+                    ),
+                );
+            } else {
+                // Enumerate the set partitions of `candidates` as restricted growth strings.
+                let n = candidates.len();
+                let mut block_of = vec![0usize; n];
+                loop {
+                    let block_count = block_of.iter().max().map_or(0, |m| m + 1);
+                    let blocks: Vec<Vec<usize>> = (0..block_count)
+                        .map(|b| {
+                            (0..n)
+                                .filter(|&i| block_of[i] == b)
+                                .map(|i| candidates[i])
+                                .collect()
+                        })
+                        .filter(|block: &Vec<usize>| block.len() > 1)
+                        .collect();
+                    if let Some(inst) = unifier_of(&blocks) {
+                        all_insts.insert(canonical_aliasing_inst(&inst, fun_type_params_arity));
+                        if all_insts.len() > MAX_ALIASING_INSTANCES {
+                            self.env.error(
+                                &target.get_loc(),
+                                &format!(
+                                    "too many type-aliasing cases to verify for `{}` (more \
+                                     than {}): the function accesses too many global resources \
+                                     whose types can coincide under some instantiation of its \
+                                     type parameters",
+                                    target.func_env.get_full_name_str(),
+                                    MAX_ALIASING_INSTANCES
+                                ),
+                            );
+                            break;
+                        }
+                    }
+                    // Advance to the next restricted growth string.
+                    let mut i = n;
+                    loop {
+                        if i <= 1 {
+                            i = 0;
+                            break;
+                        }
+                        i -= 1;
+                        let max_before = block_of[..i].iter().max().copied().unwrap_or(0);
+                        if block_of[i] <= max_before {
+                            block_of[i] += 1;
+                            for x in block_of.iter_mut().skip(i + 1) {
+                                *x = 0;
+                            }
+                            break;
+                        }
+                    }
+                    if i == 0 {
+                        break;
+                    }
                 }
             }
 
